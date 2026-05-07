@@ -1124,6 +1124,34 @@ async function autoSync(){if(gsUrl) await pushData().catch(()=>{});}
 // ===== INIT =====
 if(gsUrl){document.getElementById('gs-url')&&(document.getElementById('gs-url').value=gsUrl);setSyncStatus('idle');}
 renderAll();populateCatFilter();
+
+// ดึงข้อมูลจาก Sheets อัตโนมัติตอนเปิดหน้า
+async function initSync(){
+  if(!gsUrl) return;
+  setSyncStatus('loading');
+  try{
+    const res=await fetch(gsUrl+'?action=get',{redirect:'follow'});
+    const d=await res.json();
+    if(d.ok&&d.data){
+      if(d.data.categories&&d.data.categories.length) categories=d.data.categories.map(r=>r.name||String(r));
+      if(d.data.equipment&&d.data.equipment.length) equipment=d.data.equipment.map(r=>({...r,id:+r.id,total:+r.total}));
+      if(d.data.jobs&&d.data.jobs.length) jobs=d.data.jobs.map(r=>({...r,id:+r.id}));
+      if(d.data.reqs&&d.data.reqs.length) reqs=d.data.reqs.map(r=>({...r,id:+r.id,jobId:+r.jobId,eqId:+r.eqId,qty:+r.qty}));
+      // sync ค่า nextId ให้ไม่ชนกัน
+      if(equipment.length) nextEid=Math.max(...equipment.map(e=>+e.id))+1;
+      if(jobs.length) nextJid=Math.max(...jobs.map(j=>+j.id))+1;
+      if(reqs.length) nextRid=Math.max(...reqs.map(r=>+r.id))+1;
+      persist();renderAll();populateCatFilter();renderEq();renderJobs();renderReq();
+      setSyncStatus('ok');
+      const st=document.getElementById('sync-time');
+      if(st) st.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+    }
+  }catch(e){
+    setSyncStatus('idle');
+    console.log('Auto-sync failed, using local data');
+  }
+}
+initSync();
 </script>
 </body>
 </html>
