@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบเบิก-คืนอุปกรณ์ภายใน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F7F6F3;--surface:#fff;--surface2:#F0EEE9;--border:#E2DED6;--border2:#D0CBBC;
+  --text:#1A1714;--text2:#6B6560;--text3:#A09A91;
+  --accent:#2D5BE3;--accent-bg:#EEF2FD;
+  --danger:#D93025;--danger-bg:#FCECEA;
+  --warn:#B06000;--warn-bg:#FEF3E2;
+  --success:#1E7E34;--success-bg:#E8F5EB;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.12);
+  --r:10px;--rs:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:10}
+.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.logo-icon{width:36px;height:36px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.logo-icon i{color:#fff;font-size:18px}
+.sidebar-logo h1{font-size:14px;font-weight:600;line-height:1.3}
+.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:2px}
+.sidebar-nav{padding:12px 10px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--rs);cursor:pointer;font-size:13.5px;color:var(--text2);margin-bottom:2px;border:none;background:none;width:100%;text-align:left;transition:all .15s;font-family:'Sarabun',sans-serif}
+.nav-item i{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;min-width:18px;text-align:center;display:none}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)}
+.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--text3)}
+.sync-dot.ok{background:var(--success)}.sync-dot.err{background:var(--danger)}.sync-dot.loading{background:var(--warn)}
+.main{margin-left:220px;padding:28px 32px;min-height:100vh}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:24px}
+.page-header h2{font-size:20px;font-weight:600}
+.page-header p{font-size:13px;color:var(--text2);margin-top:3px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.s-label{font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.s-val{font-size:26px;font-weight:600;line-height:1}
+.s-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.stat-card.danger .s-val{color:var(--danger)}
+.stat-card.success .s-val{color:var(--success)}
+.stat-card.accent .s-val{color:var(--accent)}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px}
+.sh-title{font-size:15px;font-weight:600}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:20px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th{padding:10px 14px;text-align:left;font-weight:500;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{background:#E8E5DF}
+th .sort-icon{margin-left:4px;opacity:.4;font-size:11px}
+th.sort-asc .sort-icon,th.sort-desc .sort-icon{opacity:1}
+td{padding:10px 14px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFAF8}
+tr.sel-row td{background:var(--accent-bg)}
+.inp{font-family:'Sarabun',sans-serif;font-size:13px;padding:7px 11px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);outline:none}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45,91,227,.1)}
+.inp-w{width:190px}.inp-full{width:100%}
+.btn{font-family:'Sarabun',sans-serif;font-size:13px;padding:7px 13px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;font-weight:400}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.btn-primary:hover{background:#2450C8;border-color:#2450C8}
+.btn-return{background:var(--accent-bg);color:var(--accent);border-color:#B8CAF5}
+.btn-return:hover{background:#D9E5FB}
+.btn-success{background:var(--success-bg);color:var(--success);border-color:#A8D4B0}
+.btn-success:hover{background:#D0EBD5}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border-color:#F0B8B5}
+.ib{background:none;border:none;cursor:pointer;padding:5px;color:var(--text3);border-radius:var(--rs);font-size:15px;display:inline-flex;align-items:center;transition:all .15s}
+.ib:hover{background:var(--surface2);color:var(--text)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.b-borrow{background:var(--accent-bg);color:var(--accent)}
+.b-consumable{background:var(--success-bg);color:var(--success)}
+.b-returned{background:var(--success-bg);color:var(--success)}
+.b-out{background:var(--warn-bg);color:var(--warn)}
+.b-overdue{background:var(--danger-bg);color:var(--danger)}
+.b-cat{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-ok{background:var(--success)}.dot-bad{background:var(--danger)}.dot-out{background:var(--accent)}.dot-warn{background:var(--warn)}
+.empty{text-align:center;padding:2.5rem;color:var(--text3);font-size:13px}
+.empty i{font-size:32px;display:block;margin-bottom:8px;opacity:.4}
+.bulk-bar{display:none;align-items:center;gap:10px;padding:9px 14px;background:var(--accent-bg);border:1px solid #B8CAF5;border-radius:var(--rs);margin-bottom:10px;flex-wrap:wrap}
+.bulk-bar.show{display:flex}
+.bulk-bar span{font-size:13px;color:var(--accent);font-weight:500}
+input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem;backdrop-filter:blur(2px)}
+.overlay.hidden{display:none}
+.modal{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:24px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-md)}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.mfooter{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:16px}
+.fr{margin-bottom:12px}.fr2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fl{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:500}
+.cat-strip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.cat-pill{padding:4px 12px;font-size:12px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;background:var(--surface);color:var(--text2);font-family:'Sarabun',sans-serif;transition:all .15s}
+.cat-pill.active{background:var(--text);color:#fff;border-color:var(--text)}
+.eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:10px}
+.eq-card{border:1.5px solid var(--border);border-radius:var(--rs);padding:10px 12px;cursor:pointer;position:relative;background:var(--surface);transition:all .15s}
+.eq-card:hover{border-color:var(--accent);background:var(--accent-bg)}
+.eq-card.selected{border-color:var(--accent);background:var(--accent-bg)}
+.eq-card.unavail{opacity:.45;cursor:not-allowed;pointer-events:none}
+.eq-card .chk{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.eq-card .chk i{color:#fff;font-size:11px}
+.eq-name{font-size:13px;font-weight:500;margin-bottom:3px}
+.eq-meta{font-size:11px;color:var(--text2)}
+.eq-avail{font-size:11px;font-weight:600;margin-top:4px}
+.basket{border-top:1px solid var(--border);padding-top:12px;margin-top:8px}
+.basket-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.b-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.b-row:last-child{border-bottom:none}
+.b-name{flex:1;font-size:13px}
+.qty-wrap{display:flex;align-items:center;gap:6px}
+.qty-btn{width:22px;height:22px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:'Sarabun',sans-serif}
+.qty-btn:hover{background:var(--surface2)}
+.qty-val{min-width:22px;text-align:center;font-size:13px;font-weight:600}
+.ret-list{max-height:240px;overflow-y:auto}
+.ret-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px}
+.ret-row:last-child{border-bottom:none}
+.ret-info{flex:1;min-width:0}
+.ret-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ret-sub{font-size:11px;color:var(--text2);margin-top:1px}
+.detail-panel{background:var(--surface2);border-radius:var(--rs);padding:12px;margin-bottom:12px}
+.detail-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.dk{color:var(--text2)}.dv{font-weight:500;text-align:right}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rs);z-index:200;max-height:160px;overflow-y:auto;box-shadow:var(--shadow-md);display:none}
+.autocomplete-list.show{display:block}
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text)}
+.ac-item:hover{background:var(--surface2)}
+.gs-setup{background:var(--warn-bg);border:1px solid #E8C060;border-radius:var(--r);padding:16px;margin-bottom:20px}
+.gs-setup h4{font-size:14px;font-weight:600;color:var(--warn);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.gs-setup p{font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6}
+.gs-setup code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:var(--warn);color:#fff;border-radius:50%;font-size:10px;font-weight:600;margin-right:6px;flex-shrink:0}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon"><i class="ti ti-package"></i></div>
+    <h1>ระบบเบิก-คืน<br>อุปกรณ์ภายใน</h1>
+    <p>Equipment Management</p>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="goTab('overview')"><i class="ti ti-layout-dashboard"></i> ภาพรวม</button>
+    <button class="nav-item" onclick="goTab('req')"><i class="ti ti-clipboard-list"></i> รายการเบิก <span class="nav-badge" id="nb-overdue"></span></button>
+    <button class="nav-item" onclick="goTab('eq')"><i class="ti ti-tools"></i> อุปกรณ์</button>
+    <button class="nav-item" onclick="goTab('jobs')"><i class="ti ti-briefcase"></i> งาน</button>
+    <button class="nav-item" onclick="goTab('settings')"><i class="ti ti-settings"></i> ตั้งค่า</button>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="sync-dot" id="sync-dot"></span><span id="sync-status">ไม่ได้เชื่อม Sheets</span><br>
+    <span style="font-size:10px;color:var(--text3)" id="sync-time"></span>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- Overview -->
+<div id="p-overview" class="page active">
+  <div class="page-header"><h2>ภาพรวม</h2><p>สรุปสถานะการเบิก-คืนอุปกรณ์ทั้งหมด</p></div>
+  <div class="stats" id="stats-bar"></div>
+  <div class="sh">
+    <span class="sh-title">รายการค้างคืน / เกินกำหนด</span>
+    <button class="btn btn-return" onclick="openBulkReturn()"><i class="ti ti-circle-check"></i> คืนหลายรายการ</button>
+  </div>
+  <div class="card"><div class="tw"><table>
+    <colgroup><col style="width:20%"><col style="width:22%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup>
+    <thead><tr><th>งาน</th><th>อุปกรณ์</th><th>ผู้เบิก</th><th>อยู่ที่</th><th>กำหนดคืน</th><th>สถานะ</th></tr></thead>
+    <tbody id="overdue-body"></tbody>
+  </table></div></div>
+  <div class="sh"><span class="sh-title">รายการเบิกล่าสุด</span></div>
+  <div class="card"><div class="tw"><table>
+    <colgroup><col style="width:20%"><col style="width:22%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup>
+    <thead><tr><th>งาน</th><th>อุปกรณ์</th><th>ผู้เบิก</th><th>อยู่ที่</th><th>ประเภท</th><th>สถานะ</th></tr></thead>
+    <tbody id="recent-body"></tbody>
+  </table></div></div>
+</div>
+
+<!-- Requisitions -->
+<div id="p-req" class="page">
+  <div class="page-header"><h2>รายการเบิก</h2><p>จัดการรายการเบิกและคืนอุปกรณ์ทั้งหมด</p></div>
+  <div class="sh">
+    <div class="toolbar">
+      <input class="inp inp-w" type="text" id="req-s" placeholder="ค้นหา..." oninput="renderReq()">
+      <select class="inp" id="req-fs" onchange="renderReq()">
+        <option value="">ทุกสถานะ</option>
+        <option value="out">กำลังยืม</option>
+        <option value="returned">คืนแล้ว</option>
+        <option value="overdue">เกินกำหนด</option>
+        <option value="consumable">สิ้นเปลือง</option>
+      </select>
+    </div>
+    <div class="toolbar">
+      <button class="btn" onclick="exportExcel()"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
+      <button class="btn btn-return" onclick="openBulkReturn()"><i class="ti ti-circle-check"></i> คืนหลายรายการ</button>
+      <button class="btn btn-primary" onclick="openNewReq()"><i class="ti ti-plus"></i> เบิกอุปกรณ์</button>
+    </div>
+  </div>
+  <div class="bulk-bar" id="bulk-bar">
+    <input type="checkbox" id="chk-all" onchange="toggleAllReq(this.checked)">
+    <span id="bulk-count">เลือก 0 รายการ</span>
+    <button class="btn btn-return" onclick="confirmBulkReturn()"><i class="ti ti-circle-check"></i> คืนที่เลือก</button>
+    <button class="btn" onclick="cancelBulk()">ยกเลิก</button>
+  </div>
+  <div class="card"><div class="tw"><table id="req-table">
+    <colgroup><col style="width:4%"><col style="width:15%"><col style="width:18%"><col style="width:12%"><col style="width:8%"><col style="width:12%"><col style="width:11%"><col style="width:10%"><col style="width:10%"></colgroup>
+    <thead><tr>
+      <th></th>
+      <th onclick="sortTable('req','jobName')">งาน <span class="sort-icon">↕</span></th>
+      <th onclick="sortTable('req','eqName')">อุปกรณ์ <span class="sort-icon">↕</span></th>
+      <th onclick="sortTable('req','borrower')">ผู้เบิก <span class="sort-icon">↕</span></th>
+      <th>จำนวน</th>
+      <th>อยู่ที่</th>
+      <th onclick="sortTable('req','dateDue')">กำหนดคืน <span class="sort-icon">↕</span></th>
+      <th>สถานะ</th>
+      <th></th>
+    </tr></thead>
+    <tbody id="req-body"></tbody>
+  </table></div></div>
+</div>
+
+<!-- Equipment -->
+<div id="p-eq" class="page">
+  <div class="page-header"><h2>อุปกรณ์</h2><p>จัดการรายการอุปกรณ์และตรวจสอบสถานะ</p></div>
+  <div class="sh">
+    <div class="toolbar">
+      <input class="inp inp-w" type="text" id="eq-s" placeholder="ค้นหาอุปกรณ์..." oninput="renderEq()">
+      <select class="inp" id="eq-cat" onchange="renderEq()"><option value="">ทุก Category</option></select>
+      <select class="inp" id="eq-type" onchange="renderEq()">
+        <option value="">ทุกประเภท</option>
+        <option value="borrow">เบิกยืม</option>
+        <option value="consumable">สิ้นเปลือง</option>
+      </select>
+    </div>
+    <div class="toolbar">
+      <button class="btn" onclick="openManageCats()"><i class="ti ti-tag"></i> จัดการ Category</button>
+      <button class="btn btn-primary" onclick="openAddEq()"><i class="ti ti-plus"></i> เพิ่มอุปกรณ์</button>
+    </div>
+  </div>
+  <div class="card"><div class="tw"><table id="eq-table">
+    <colgroup><col style="width:22%"><col style="width:13%"><col style="width:12%"><col style="width:9%"><col style="width:9%"><col style="width:26%"><col style="width:9%"></colgroup>
+    <thead><tr>
+      <th onclick="sortTable('eq','name')">ชื่ออุปกรณ์ <span class="sort-icon">↕</span></th>
+      <th onclick="sortTable('eq','cat')">Category <span class="sort-icon">↕</span></th>
+      <th>ประเภท</th>
+      <th onclick="sortTable('eq','total')">ทั้งหมด <span class="sort-icon">↕</span></th>
+      <th>คงเหลือ</th>
+      <th>กำลังยืม (อยู่ที่)</th>
+      <th></th>
+    </tr></thead>
+    <tbody id="eq-body"></tbody>
+  </table></div></div>
+</div>
+
+<!-- Jobs -->
+<div id="p-jobs" class="page">
+  <div class="page-header"><h2>งาน</h2><p>จัดการรายการงานและดูอุปกรณ์ที่เบิกต่องาน</p></div>
+  <div class="sh">
+    <input class="inp inp-w" type="text" id="job-s" placeholder="ค้นหางาน..." oninput="renderJobs()">
+    <button class="btn btn-primary" onclick="openAddJob()"><i class="ti ti-plus"></i> เพิ่มงาน</button>
+  </div>
+  <div class="card"><div class="tw"><table id="job-table">
+    <colgroup><col style="width:22%"><col style="width:28%"><col style="width:13%"><col style="width:15%"><col style="width:12%"><col style="width:10%"></colgroup>
+    <thead><tr>
+      <th onclick="sortTable('jobs','name')">ชื่องาน <span class="sort-icon">↕</span></th>
+      <th>รายละเอียด</th>
+      <th onclick="sortTable('jobs','date')">วันที่ <span class="sort-icon">↕</span></th>
+      <th>ผู้รับผิดชอบ</th>
+      <th>รายการเบิก</th>
+      <th></th>
+    </tr></thead>
+    <tbody id="job-body"></tbody>
+  </table></div></div>
+</div>
+
+<!-- Settings -->
+<div id="p-settings" class="page">
+  <div class="page-header"><h2>ตั้งค่า</h2><p>เชื่อมต่อ Google Sheets เพื่อแชร์ข้อมูลกับทีม</p></div>
+  <div class="card" style="padding:24px;max-width:600px">
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px"><i class="ti ti-brand-google"></i> Google Sheets Sync</h3>
+    <div style="background:var(--accent-bg);border-radius:var(--rs);padding:14px;margin-bottom:20px;font-size:13px;line-height:1.8;color:var(--text2)">
+      <strong style="color:var(--text)">วิธีตั้งค่า (ทำครั้งเดียว)</strong><br>
+      <span><span class="step-num" style="background:var(--accent)">1</span>เปิด <a href="https://sheets.google.com" target="_blank" style="color:var(--accent)">Google Sheets</a> → สร้าง Spreadsheet ใหม่</span><br>
+      <span><span class="step-num" style="background:var(--accent)">2</span>ไปที่ <strong>Extensions → Apps Script</strong></span><br>
+      <span><span class="step-num" style="background:var(--accent)">3</span>วาง code ด้านล่างนี้ แล้วกด <strong>Deploy → New deployment → Web app</strong></span><br>
+      <span><span class="step-num" style="background:var(--accent)">4</span>ตั้ง "Who has access" เป็น <strong>Anyone</strong> → Copy URL → วางด้านล่าง</span>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:500;color:var(--text2)">Apps Script Code (คัดลอกไปวาง)</span>
+        <button class="btn" style="font-size:11px;padding:3px 8px" onclick="copyScript()"><i class="ti ti-copy"></i> คัดลอก</button>
+      </div>
+      <textarea id="script-code" readonly style="width:100%;height:120px;font-family:monospace;font-size:11px;padding:10px;border:1px solid var(--border2);border-radius:var(--rs);background:#F8F7F4;color:var(--text);resize:none;outline:none"></textarea>
+    </div>
+    <div class="fr">
+      <label class="fl">Web App URL</label>
+      <input class="inp inp-full" type="text" id="gs-url" placeholder="https://script.google.com/macros/s/..." oninput="saveGsUrl()">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="syncNow()"><i class="ti ti-refresh"></i> ซิงค์เดี๋ยวนี้</button>
+      <button class="btn" onclick="pushData()"><i class="ti ti-upload"></i> อัปโหลดข้อมูลไป Sheets</button>
+      <button class="btn" onclick="pullData()"><i class="ti ti-download"></i> ดึงข้อมูลจาก Sheets</button>
+    </div>
+    <div id="gs-msg" style="margin-top:12px;font-size:13px;display:none"></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<div class="overlay hidden" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+const APPS_SCRIPT = `function doGet(e){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var action=e.parameter.action||'get';
+  var output;
+  if(action==='get'){
+    var data={};
+    ['categories','equipment','jobs','reqs'].forEach(function(name){
+      var sh=ss.getSheetByName(name);
+      if(!sh){data[name]=[];}
+      else{
+        var rows=sh.getDataRange().getValues();
+        if(rows.length<=1){data[name]=[];}
+        else{
+          var headers=rows[0];
+          data[name]=rows.slice(1).map(function(r){
+            var obj={};
+            headers.forEach(function(h,i){obj[h]=r[i]===null||r[i]===undefined?'':String(r[i]);});
+            return obj;
+          });
+        }
+      }
+    });
+    output=JSON.stringify({ok:true,data:data});
+  } else if(action==='push'){
+    try{
+      var payload=JSON.parse(decodeURIComponent(e.parameter.payload));
+      Object.keys(payload).forEach(function(name){
+        var rows=payload[name];
+        var sh=ss.getSheetByName(name);
+        if(!sh) sh=ss.insertSheet(name);
+        sh.clearContents();
+        if(!rows||rows.length===0) return;
+        var headers=typeof rows[0]==='string'?['name']:Object.keys(rows[0]);
+        sh.appendRow(headers);
+        rows.forEach(function(r){
+          sh.appendRow(headers.map(function(h){
+            var v=typeof r==='string'?r:(r[h]===null||r[h]===undefined?'':r[h]);
+            return String(v);
+          }));
+        });
+      });
+      output=JSON.stringify({ok:true});
+    }catch(err){
+      output=JSON.stringify({ok:false,error:err.toString()});
+    }
+  } else {
+    output=JSON.stringify({ok:false,error:'unknown action'});
+  }
+  return ContentService.createTextOutput(output)
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+document.getElementById('script-code').value = APPS_SCRIPT;
+
+function copyScript(){
+  navigator.clipboard.writeText(APPS_SCRIPT).then(()=>{
+    showGsMsg('คัดลอก code แล้ว — ไปวางใน Apps Script ได้เลย','success');
+  });
+}
+
+// ===== STORAGE =====
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+const DEF_CATS=['โสตทัศนูปกรณ์','เครื่องใช้สำนักงาน','เฟอร์นิเจอร์','อุปกรณ์ไฟฟ้า','วัสดุสิ้นเปลือง'];
+const DEF_EQ=[
+  {id:1,name:'S01 กล้องถ่ายรูป Canon EOS',cat:'โสตทัศนูปกรณ์',type:'borrow',total:3,unit:'ตัว'},
+  {id:2,name:'S02 ขาตั้งกล้อง',cat:'โสตทัศนูปกรณ์',type:'borrow',total:5,unit:'ตัว'},
+  {id:3,name:'S03 ไมโครโฟนไร้สาย',cat:'โสตทัศนูปกรณ์',type:'borrow',total:4,unit:'ตัว'},
+  {id:4,name:'S04 โปรเจกเตอร์',cat:'โสตทัศนูปกรณ์',type:'borrow',total:2,unit:'เครื่อง'},
+  {id:5,name:'S05 จอ HDMI พกพา',cat:'โสตทัศนูปกรณ์',type:'borrow',total:3,unit:'จอ'},
+  {id:6,name:'E01 สายไฟต่อพ่วง',cat:'อุปกรณ์ไฟฟ้า',type:'borrow',total:8,unit:'เส้น'},
+  {id:7,name:'E02 UPS สำรองไฟ',cat:'อุปกรณ์ไฟฟ้า',type:'borrow',total:2,unit:'เครื่อง'},
+  {id:8,name:'F01 โต๊ะพับ',cat:'เฟอร์นิเจอร์',type:'borrow',total:10,unit:'ตัว'},
+  {id:9,name:'F02 เก้าอี้พับ',cat:'เฟอร์นิเจอร์',type:'borrow',total:30,unit:'ตัว'},
+  {id:10,name:'C01 กระดาษ A4',cat:'วัสดุสิ้นเปลือง',type:'consumable',total:500,unit:'รีม'},
+  {id:11,name:'O01 ปากกาลูกลื่น',cat:'เครื่องใช้สำนักงาน',type:'consumable',total:200,unit:'ด้าม'},
+  {id:12,name:'O02 เทปกาว',cat:'เครื่องใช้สำนักงาน',type:'consumable',total:50,unit:'ม้วน'},
+  {id:13,name:'E03 แบตเตอรี่ AA',cat:'อุปกรณ์ไฟฟ้า',type:'consumable',total:80,unit:'ก้อน'},
+];
+const DEF_JOBS=[
+  {id:1,name:'งานประชุมประจำปี',detail:'ประชุมใหญ่คณะกรรมการ',date:'2026-04-10',owner:'สมชาย ใจดี'},
+  {id:2,name:'งานเปิดตัวสินค้า',detail:'เปิดตัวผลิตภัณฑ์ใหม่ Q2',date:'2026-04-22',owner:'วิไล สวยงาม'},
+  {id:3,name:'งานอบรมพนักงาน',detail:'อบรมทักษะดิจิทัล',date:'2026-05-01',owner:'ประทีป มั่นคง'},
+  {id:4,name:'งานสัมมนาออนไลน์',detail:'Webinar ประจำเดือน',date:'2026-05-05',owner:'กมลา รุ่งเรือง'},
+];
+const DEF_REQS=[
+  {id:1,jobId:1,jobName:'งานประชุมประจำปี',eqId:1,eqName:'S01 กล้องถ่ายรูป Canon EOS',borrower:'นิรันดร์ ชัยชนะ',qty:2,type:'borrow',location:'ห้องประชุมใหญ่',dateOut:'2026-04-10',dateDue:'2026-04-12',dateIn:'2026-04-12',status:'returned'},
+  {id:2,jobId:1,jobName:'งานประชุมประจำปี',eqId:2,eqName:'S02 ขาตั้งกล้อง',borrower:'นิรันดร์ ชัยชนะ',qty:2,type:'borrow',location:'ห้องประชุมใหญ่',dateOut:'2026-04-10',dateDue:'2026-04-12',dateIn:'2026-04-12',status:'returned'},
+  {id:4,jobId:2,jobName:'งานเปิดตัวสินค้า',eqId:1,eqName:'S01 กล้องถ่ายรูป Canon EOS',borrower:'วิไล สวยงาม',qty:1,type:'borrow',location:'ลานกิจกรรม B1',dateOut:'2026-04-22',dateDue:'2026-04-24',dateIn:null,status:'overdue'},
+  {id:5,jobId:2,jobName:'งานเปิดตัวสินค้า',eqId:3,eqName:'S03 ไมโครโฟนไร้สาย',borrower:'วิไล สวยงาม',qty:2,type:'borrow',location:'ลานกิจกรรม B1',dateOut:'2026-04-22',dateDue:'2026-04-24',dateIn:null,status:'overdue'},
+  {id:6,jobId:3,jobName:'งานอบรมพนักงาน',eqId:4,eqName:'S04 โปรเจกเตอร์',borrower:'ประทีป มั่นคง',qty:1,type:'borrow',location:'ห้องอบรม 301',dateOut:'2026-05-01',dateDue:'2026-05-03',dateIn:null,status:'out'},
+  {id:8,jobId:4,jobName:'งานสัมมนาออนไลน์',eqId:3,eqName:'S03 ไมโครโฟนไร้สาย',borrower:'กมลา รุ่งเรือง',qty:1,type:'borrow',location:'ห้องถ่ายทอด',dateOut:'2026-05-05',dateDue:'2026-05-06',dateIn:null,status:'out'},
+];
+
+let categories=load('eq_cats',DEF_CATS);
+let equipment=load('eq_items',DEF_EQ);
+let jobs=load('eq_jobs',DEF_JOBS);
+let reqs=load('eq_reqs',DEF_REQS);
+let nextEid=load('eq_neid',14);
+let nextJid=load('eq_njid',5);
+let nextRid=load('eq_nrid',10);
+let gsUrl=load('eq_gsurl','');
+let sortState={};
+
+function persist(){
+  save('eq_cats',categories);save('eq_items',equipment);
+  save('eq_jobs',jobs);save('eq_reqs',reqs);
+  save('eq_neid',nextEid);save('eq_njid',nextJid);save('eq_nrid',nextRid);
+}
+
+// ===== HELPERS =====
+function today(){return new Date().toISOString().split('T')[0];}
+function fd(d){if(!d)return'-';return new Date(d+'T00:00:00').toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'});}
+function daysDiff(d){return Math.floor((new Date()-new Date(d+'T00:00:00'))/864e5);}
+function getJob(id){return jobs.find(j=>j.id==id)||{name:'-'};}
+function getEq(id){return equipment.find(e=>e.id==id)||{name:'-',unit:''};}
+function calcAvail(eqId){
+  const eq=getEq(eqId);
+  const out=reqs.filter(r=>r.eqId==eqId&&r.type==='borrow'&&(r.status==='out'||r.status==='overdue')).reduce((s,r)=>s+(+r.qty||0),0);
+  return eq.total-out;
+}
+function getOutInfo(eqId){
+  return reqs.filter(r=>r.eqId==eqId&&r.type==='borrow'&&(r.status==='out'||r.status==='overdue'))
+    .map(r=>`${r.location||'-'} (${r.borrower})`).join(', ');
+}
+function statusBadge(r){
+  if(r.type==='consumable') return '<span class="badge b-consumable">สิ้นเปลือง</span>';
+  if(r.status==='returned') return '<span class="badge b-returned"><span class="dot dot-ok"></span>คืนแล้ว</span>';
+  if(r.status==='overdue')  return `<span class="badge b-overdue"><span class="dot dot-bad"></span>เกิน ${daysDiff(r.dateDue)} วัน</span>`;
+  return '<span class="badge b-out"><span class="dot dot-out"></span>กำลังยืม</span>';
+}
+
+// ===== SORT =====
+function sortTable(scope,field){
+  if(!sortState[scope]||sortState[scope].field!==field){
+    sortState[scope]={field,dir:'asc'};
+  } else {
+    sortState[scope].dir=sortState[scope].dir==='asc'?'desc':'asc';
+  }
+  if(scope==='req') renderReq();
+  else if(scope==='eq') renderEq();
+  else if(scope==='jobs') renderJobs();
+}
+function applySortIcon(tableId,field,scope){
+  const tbl=document.getElementById(tableId);
+  if(!tbl) return;
+  tbl.querySelectorAll('th').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    const si=th.querySelector('.sort-icon');
+    if(si) si.textContent='↕';
+  });
+  if(!sortState[scope]) return;
+  tbl.querySelectorAll('th').forEach(th=>{
+    if(th.getAttribute('onclick')&&th.getAttribute('onclick').includes(`'${sortState[scope].field}'`)){
+      th.classList.add('sort-'+sortState[scope].dir);
+      const si=th.querySelector('.sort-icon');
+      if(si) si.textContent=sortState[scope].dir==='asc'?'↑':'↓';
+    }
+  });
+}
+function sortArr(arr,scope,extra){
+  if(!sortState[scope]) return arr.sort((a,b)=>{const an=extra?extra(a):a.name||'';const bn=extra?extra(b):b.name||'';return an.localeCompare(bn,'th');});
+  const {field,dir}=sortState[scope];
+  return [...arr].sort((a,b)=>{
+    let av=a[field]||'',bv=b[field]||'';
+    if(!isNaN(av)&&!isNaN(bv)){av=+av;bv=+bv;}
+    const cmp=typeof av==='number'?av-bv:String(av).localeCompare(String(bv),'th');
+    return dir==='asc'?cmp:-cmp;
+  });
+}
+
+// ===== RENDER ALL =====
+function renderAll(){renderStats();renderOverdue();renderRecent();updateNavBadge();}
+
+function renderStats(){
+  const out=reqs.filter(r=>r.type==='borrow'&&r.status==='out').length;
+  const over=reqs.filter(r=>r.status==='overdue').length;
+  const ret=reqs.filter(r=>r.status==='returned').length;
+  const con=reqs.filter(r=>r.type==='consumable').length;
+  document.getElementById('stats-bar').innerHTML=`
+    <div class="stat-card accent"><div class="s-label"><i class="ti ti-clock"></i> กำลังยืม</div><div class="s-val">${out}</div><div class="s-sub">รายการ</div></div>
+    <div class="stat-card danger"><div class="s-label"><i class="ti ti-alert-circle"></i> เกินกำหนด</div><div class="s-val">${over}</div><div class="s-sub">รายการ</div></div>
+    <div class="stat-card success"><div class="s-label"><i class="ti ti-circle-check"></i> คืนแล้ว</div><div class="s-val">${ret}</div><div class="s-sub">รายการ</div></div>
+    <div class="stat-card"><div class="s-label"><i class="ti ti-package"></i> สิ้นเปลือง</div><div class="s-val">${con}</div><div class="s-sub">รายการ</div></div>
+    <div class="stat-card"><div class="s-label"><i class="ti ti-briefcase"></i> งาน</div><div class="s-val">${jobs.length}</div><div class="s-sub">งาน</div></div>`;
+}
+function updateNavBadge(){
+  const n=reqs.filter(r=>r.status==='overdue').length;
+  const nb=document.getElementById('nb-overdue');
+  nb.textContent=n;nb.style.display=n?'inline-block':'none';
+}
+function renderOverdue(){
+  const list=reqs.filter(r=>r.status==='overdue'||r.status==='out');
+  document.getElementById('overdue-body').innerHTML=list.length
+    ?list.map(r=>`<tr><td>${r.jobName||getJob(r.jobId).name}</td><td>${r.eqName||getEq(r.eqId).name}</td><td>${r.borrower}</td><td>${r.location||'-'}</td><td>${fd(r.dateDue)}</td><td>${statusBadge(r)}</td></tr>`).join('')
+    :`<tr><td colspan="6" class="empty"><i class="ti ti-mood-happy"></i>ไม่มีรายการค้างคืน</td></tr>`;
+}
+function renderRecent(){
+  const list=[...reqs].sort((a,b)=>new Date(b.dateOut)-new Date(a.dateOut)).slice(0,6);
+  document.getElementById('recent-body').innerHTML=list.map(r=>`<tr>
+    <td>${r.jobName||getJob(r.jobId).name}</td><td>${r.eqName||getEq(r.eqId).name}</td>
+    <td>${r.borrower}</td><td>${r.location||'-'}</td>
+    <td><span class="badge ${r.type==='borrow'?'b-borrow':'b-consumable'}">${r.type==='borrow'?'เบิกยืม':'สิ้นเปลือง'}</span></td>
+    <td>${statusBadge(r)}</td></tr>`).join('');
+}
+
+let bulkMode=false;let selectedIds=new Set();
+function renderReq(){
+  const s=(document.getElementById('req-s').value||'').toLowerCase();
+  const fs=document.getElementById('req-fs').value;
+  let list=reqs.filter(r=>{
+    const jn=r.jobName||getJob(r.jobId).name||'';
+    const en=r.eqName||getEq(r.eqId).name||'';
+    if(s&&![jn,en,r.borrower,r.location||''].some(x=>x.toLowerCase().includes(s))) return false;
+    if(fs&&r.status!==fs) return false;
+    return true;
+  });
+  list=sortArr(list,'req');
+  applySortIcon('req-table','','req');
+  const b=document.getElementById('req-body');
+  b.innerHTML=list.length?list.map(r=>{
+    const can=r.type==='borrow'&&(r.status==='out'||r.status==='overdue');
+    const sel=selectedIds.has(r.id);
+    const jn=r.jobName||getJob(r.jobId).name;
+    const en=r.eqName||getEq(r.eqId).name;
+    const unit=r.eqUnit||getEq(r.eqId).unit||'';
+    return`<tr class="${sel?'sel-row':''}">
+      <td style="text-align:center">${can&&bulkMode?`<input type="checkbox" ${sel?'checked':''} onchange="toggleSel(${r.id},this.checked)">`:'<span style="color:var(--text3);font-size:11px">${r.type==="consumable"?"—":r.status==="returned"?"✓":""}</span>'}</td>
+      <td>${jn}</td><td>${en}</td><td>${r.borrower}</td>
+      <td>${r.qty} ${unit}</td><td>${r.location||'-'}</td><td>${fd(r.dateDue)}</td>
+      <td>${statusBadge(r)}</td>
+      <td style="text-align:center;white-space:nowrap">
+        ${can&&!bulkMode?`<button class="ib" title="คืน" onclick="returnSingle(${r.id})"><i class="ti ti-circle-check"></i></button>`:''}
+        ${!bulkMode?`<button class="ib" title="ลบ" onclick="delReq(${r.id})"><i class="ti ti-trash"></i></button>`:''}
+      </td></tr>`;
+  }).join(''):`<tr><td colspan="9" class="empty"><i class="ti ti-inbox"></i>ไม่พบรายการ</td></tr>`;
+  updateBulkBar();
+}
+function toggleSel(id,c){if(c)selectedIds.add(id);else selectedIds.delete(id);updateBulkBar();renderReq();}
+function toggleAllReq(c){
+  const s=(document.getElementById('req-s').value||'').toLowerCase();
+  const fs=document.getElementById('req-fs').value;
+  reqs.filter(r=>{
+    const jn=r.jobName||'';const en=r.eqName||'';
+    if(s&&![jn,en,r.borrower,r.location||''].some(x=>x.toLowerCase().includes(s))) return false;
+    if(fs&&r.status!==fs) return false;
+    return r.type==='borrow'&&(r.status==='out'||r.status==='overdue');
+  }).forEach(r=>c?selectedIds.add(r.id):selectedIds.delete(r.id));
+  renderReq();
+}
+function updateBulkBar(){
+  const bar=document.getElementById('bulk-bar');if(!bar) return;
+  bar.classList.toggle('show',bulkMode);
+  const el=document.getElementById('bulk-count');
+  if(el) el.textContent=`เลือก ${selectedIds.size} รายการ`;
+}
+function cancelBulk(){bulkMode=false;selectedIds.clear();renderReq();}
+
+function renderEq(){
+  const s=(document.getElementById('eq-s').value||'').toLowerCase();
+  const cat=document.getElementById('eq-cat').value;
+  const tp=document.getElementById('eq-type').value;
+  let list=equipment.filter(e=>{
+    if(s&&!e.name.toLowerCase().includes(s)) return false;
+    if(cat&&e.cat!==cat) return false;
+    if(tp&&e.type!==tp) return false;
+    return true;
+  });
+  // default sort by name
+  if(!sortState['eq']) list=list.sort((a,b)=>a.name.localeCompare(b.name,'th'));
+  else list=sortArr(list,'eq');
+  applySortIcon('eq-table','','eq');
+  document.getElementById('eq-body').innerHTML=list.length?list.map(e=>{
+    const av=calcAvail(e.id);
+    const avC=av<=0?'var(--danger)':av<=2?'var(--warn)':'var(--success)';
+    return`<tr>
+      <td style="white-space:normal">${e.name}</td>
+      <td><span class="badge b-cat">${e.cat}</span></td>
+      <td><span class="badge ${e.type==='borrow'?'b-borrow':'b-consumable'}">${e.type==='borrow'?'เบิกยืม':'สิ้นเปลือง'}</span></td>
+      <td>${e.total}</td>
+      <td style="color:${avC};font-weight:600">${av}</td>
+      <td style="white-space:normal;font-size:12px;color:var(--text2)">${getOutInfo(e.id)||'-'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="ib" title="ประวัติ" onclick="showEqHist(${e.id})"><i class="ti ti-history"></i></button>
+        <button class="ib" title="ลบ" onclick="delEq(${e.id})"><i class="ti ti-trash"></i></button>
+      </td></tr>`;
+  }).join(''):`<tr><td colspan="7" class="empty"><i class="ti ti-tool"></i>ไม่พบอุปกรณ์</td></tr>`;
+}
+function renderJobs(){
+  const s=(document.getElementById('job-s').value||'').toLowerCase();
+  let list=jobs.filter(j=>!s||j.name.toLowerCase().includes(s)||j.owner.toLowerCase().includes(s));
+  if(!sortState['jobs']) list=list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  else list=sortArr(list,'jobs');
+  applySortIcon('job-table','','jobs');
+  document.getElementById('job-body').innerHTML=list.length?list.map(j=>{
+    const cnt=reqs.filter(r=>r.jobId==j.id||r.jobName===j.name).length;
+    return`<tr>
+      <td style="white-space:normal">${j.name}</td>
+      <td style="white-space:normal;color:var(--text2)">${j.detail||'-'}</td>
+      <td>${fd(j.date)}</td><td>${j.owner||'-'}</td>
+      <td style="text-align:center"><button class="btn" style="padding:3px 10px;font-size:12px" onclick="showJobDetail(${j.id})">${cnt} รายการ</button></td>
+      <td style="text-align:center"><button class="ib" onclick="delJob(${j.id})"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6" class="empty"><i class="ti ti-briefcase"></i>ไม่พบงาน</td></tr>`;
+}
+function populateCatFilter(){
+  const cats=[...new Set(equipment.map(e=>e.cat))].sort((a,b)=>a.localeCompare(b,'th'));
+  document.getElementById('eq-cat').innerHTML='<option value="">ทุก Category</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+// ===== TAB =====
+function goTab(t){
+  ['overview','req','eq','jobs','settings'].forEach(id=>{
+    document.getElementById('p-'+id).classList.toggle('active',id===t);
+  });
+  document.querySelectorAll('.nav-item').forEach((el,i)=>{
+    el.classList.toggle('active',['overview','req','eq','jobs','settings'][i]===t);
+  });
+  bulkMode=false;selectedIds.clear();
+  if(t==='req') renderReq();
+  if(t==='eq'){populateCatFilter();renderEq();}
+  if(t==='jobs') renderJobs();
+  if(t==='settings'){
+    document.getElementById('gs-url').value=gsUrl||'';
+    const msg=document.getElementById('gs-msg');if(msg)msg.style.display='none';
+  }
+}
+
+// ===== MODAL =====
+function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('overlay').classList.remove('hidden');}
+function closeModal(){document.getElementById('overlay').classList.add('hidden');}
+function handleOverlayClick(e){if(e.target.id==='overlay')closeModal();}
+
+// ===== NEW REQUISITION =====
+let basket={},reqSelCat='',reqSearch='';
+function openNewReq(){
+  const due=new Date();due.setDate(due.getDate()+2);
+  const dueStr=due.toISOString().split('T')[0];
+  basket={};reqSelCat='';reqSearch='';
+  const jobNames=[...new Set(jobs.map(j=>j.name))].sort((a,b)=>a.localeCompare(b,'th'));
+  openModal(`
+    <h3><i class="ti ti-package"></i> เบิกอุปกรณ์</h3>
+    <div class="fr2">
+      <div>
+        <label class="fl">ชื่องาน * <span style="font-size:10px;color:var(--text3)">(พิมพ์ได้เลย หรือเลือกจากรายการ)</span></label>
+        <div class="autocomplete-wrap">
+          <input class="inp inp-full" type="text" id="f-jobname" placeholder="พิมพ์ชื่องาน..." autocomplete="off"
+            oninput="showJobAc(this.value)" onblur="setTimeout(()=>hideJobAc(),200)">
+          <div class="autocomplete-list" id="job-ac-list">
+            ${jobNames.map(n=>`<div class="ac-item" onmousedown="pickJob('${n.replace(/'/g,"\\'")}')">
+              <i class="ti ti-briefcase" style="font-size:13px;margin-right:6px;color:var(--text3)"></i>${n}
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div><label class="fl">ผู้เบิก *</label><input class="inp inp-full" id="f-borrower" placeholder="ชื่อผู้เบิก"></div>
+    </div>
+    <div class="fr2">
+      <div><label class="fl">สถานที่ใช้งาน</label><input class="inp inp-full" id="f-location" placeholder="เช่น ห้องประชุม A"></div>
+      <div><label class="fl">วันเบิก</label><input class="inp inp-full" type="date" id="f-dateout" value="${today()}"></div>
+    </div>
+    <div class="fr2">
+      <div><label class="fl">กำหนดคืน</label><input class="inp inp-full" type="date" id="f-duedate" value="${dueStr}"></div>
+      <div></div>
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:600">เลือกอุปกรณ์</span>
+      <input class="inp" style="width:170px;font-size:12px" type="text" id="ep-search" placeholder="ค้นหา..." oninput="reqSearch=this.value;renderEqPicker()">
+    </div>
+    <div class="cat-strip" id="cat-strip"></div>
+    <div class="eq-grid" id="eq-picker"></div>
+    <div class="basket" id="basket-area"></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveReqs()"><i class="ti ti-check"></i> บันทึกการเบิก</button>
+    </div>`);
+  renderCatStrip();renderEqPicker();renderBasket();
+}
+function showJobAc(val){
+  const list=document.getElementById('job-ac-list');if(!list) return;
+  const q=val.toLowerCase();
+  const names=[...new Set(jobs.map(j=>j.name))].sort((a,b)=>a.localeCompare(b,'th'));
+  const filtered=names.filter(n=>n.toLowerCase().includes(q));
+  list.innerHTML=filtered.map(n=>`<div class="ac-item" onmousedown="pickJob('${n.replace(/'/g,"\\'")}')">
+    <i class="ti ti-briefcase" style="font-size:13px;margin-right:6px;color:var(--text3)"></i>${n}
+  </div>`).join('');
+  list.classList.toggle('show',filtered.length>0&&val.length>0);
+}
+function hideJobAc(){const l=document.getElementById('job-ac-list');if(l)l.classList.remove('show');}
+function pickJob(name){
+  const el=document.getElementById('f-jobname');if(el)el.value=name;
+  hideJobAc();
+}
+function renderCatStrip(){
+  const cats=['ทั้งหมด',...new Set(equipment.map(e=>e.cat))];
+  document.getElementById('cat-strip').innerHTML=cats.map(c=>`
+    <button class="cat-pill ${(c==='ทั้งหมด'&&!reqSelCat)||(c===reqSelCat)?'active':''}" onclick="setReqCat('${c}')">${c}</button>`).join('');
+}
+function setReqCat(c){reqSelCat=c==='ทั้งหมด'?'':c;renderCatStrip();renderEqPicker();}
+function renderEqPicker(){
+  const s=reqSearch.toLowerCase();
+  const list=equipment.filter(e=>{
+    if(reqSelCat&&e.cat!==reqSelCat) return false;
+    if(s&&!e.name.toLowerCase().includes(s)) return false;
+    return true;
+  }).sort((a,b)=>a.name.localeCompare(b.name,'th'));
+  const g=document.getElementById('eq-picker');if(!g) return;
+  g.innerHTML=list.map(e=>{
+    const av=calcAvail(e.id);const sel=basket[e.id];const unavail=av<=0&&!sel;
+    const avC=av<=0?'var(--danger)':av<=2?'var(--warn)':'var(--success)';
+    return`<div class="eq-card ${sel?'selected':''} ${unavail?'unavail':''}" onclick="${unavail?'':'toggleEq('+e.id+')'}">
+      ${sel?`<span class="chk"><i class="ti ti-check"></i></span>`:''}
+      <div class="eq-name">${e.name}</div>
+      <div class="eq-meta">${e.cat} · <span class="badge ${e.type==='borrow'?'b-borrow':'b-consumable'}" style="font-size:10px;padding:1px 6px">${e.type==='borrow'?'ยืม':'สิ้นเปลือง'}</span></div>
+      <div class="eq-avail" style="color:${avC}">คงเหลือ ${av} ${e.unit}</div>
+    </div>`;
+  }).join('')||'<div style="grid-column:span 2;text-align:center;padding:1rem;font-size:13px;color:var(--text3)">ไม่พบอุปกรณ์</div>';
+}
+function toggleEq(id){
+  if(basket[id]){delete basket[id];}else{basket[id]={qty:1};}
+  renderEqPicker();renderBasket();
+}
+function renderBasket(){
+  const b=document.getElementById('basket-area');if(!b) return;
+  const keys=Object.keys(basket).map(Number);
+  if(!keys.length){b.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0">ยังไม่ได้เลือกอุปกรณ์</div>';return;}
+  b.innerHTML=`<div class="basket-title">เลือกแล้ว ${keys.length} รายการ</div>`+
+    keys.map(id=>{const eq=getEq(id);return`
+    <div class="b-row">
+      <span class="b-name">${eq.name}</span>
+      <div class="qty-wrap">
+        <button class="qty-btn" onclick="adjQty(${id},-1)">−</button>
+        <span class="qty-val">${basket[id].qty}</span>
+        <button class="qty-btn" onclick="adjQty(${id},1)">+</button>
+        <span style="font-size:11px;color:var(--text2)">${eq.unit}</span>
+      </div>
+      <button class="ib" onclick="toggleEq(${id})"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>`;}).join('');
+}
+function adjQty(id,d){
+  if(!basket[id]) return;
+  const eq=getEq(id);const av=calcAvail(id);
+  const nq=basket[id].qty+d;
+  if(nq<1){delete basket[id];renderEqPicker();renderBasket();return;}
+  if(eq.type==='borrow'&&nq>av){alert(`คงเหลือเพียง ${av} ${eq.unit}`);return;}
+  basket[id].qty=nq;renderBasket();
+}
+function saveReqs(){
+  const jobName=(document.getElementById('f-jobname').value||'').trim();
+  const borrower=document.getElementById('f-borrower').value.trim();
+  const location=document.getElementById('f-location').value.trim();
+  const dateOut=document.getElementById('f-dateout').value;
+  const dateDue=document.getElementById('f-duedate').value;
+  if(!jobName){alert('กรุณากรอกชื่องาน');return;}
+  if(!borrower){alert('กรุณากรอกชื่อผู้เบิก');return;}
+  const keys=Object.keys(basket).map(Number);
+  if(!keys.length){alert('กรุณาเลือกอุปกรณ์อย่างน้อย 1 รายการ');return;}
+  // auto-create job if not exists
+  let job=jobs.find(j=>j.name===jobName);
+  if(!job){
+    job={id:nextJid++,name:jobName,detail:'',date:dateOut,owner:borrower};
+    jobs.push(job);
+  }
+  keys.forEach(id=>{
+    const eq=getEq(id);
+    reqs.push({id:nextRid++,jobId:job.id,jobName:job.name,eqId:id,eqName:eq.name,eqUnit:eq.unit,
+      borrower,qty:basket[id].qty,type:eq.type,
+      location:eq.type==='borrow'?location:'-',dateOut,
+      dateDue:eq.type==='borrow'?dateDue:null,dateIn:null,
+      status:eq.type==='consumable'?'consumable':'out'});
+  });
+  persist();closeModal();renderReq();renderAll();renderJobs();autoSync();
+}
+
+// ===== RETURN =====
+function returnSingle(id){
+  const r=reqs.find(x=>x.id==id);if(!r) return;
+  const jn=r.jobName||getJob(r.jobId).name;
+  const en=r.eqName||getEq(r.eqId).name;
+  openModal(`<h3><i class="ti ti-circle-check"></i> บันทึกคืนอุปกรณ์</h3>
+    <div class="detail-panel">
+      <div class="detail-row"><span class="dk">งาน</span><span class="dv">${jn}</span></div>
+      <div class="detail-row"><span class="dk">อุปกรณ์</span><span class="dv">${en}</span></div>
+      <div class="detail-row"><span class="dk">ผู้เบิก</span><span class="dv">${r.borrower}</span></div>
+      <div class="detail-row"><span class="dk">อยู่ที่</span><span class="dv">${r.location||'-'}</span></div>
+    </div>
+    <div class="fr"><label class="fl">วันที่คืน</label><input class="inp inp-full" type="date" id="f-datein" value="${today()}"></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="doReturn(${id})">ยืนยันคืน</button>
+    </div>`);
+}
+function doReturn(id){
+  const r=reqs.find(x=>x.id==id);if(!r) return;
+  r.dateIn=document.getElementById('f-datein').value;r.status='returned';
+  persist();closeModal();renderReq();renderAll();renderEq();autoSync();
+}
+function openBulkReturn(){
+  const list=reqs.filter(r=>r.type==='borrow'&&(r.status==='out'||r.status==='overdue'));
+  if(!list.length){alert('ไม่มีรายการที่ต้องคืน');return;}
+  openModal(`<h3><i class="ti ti-circle-check"></i> คืนอุปกรณ์หลายรายการ</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text2)">เลือกรายการที่ต้องการคืน</span>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="rc-all" checked onchange="toggleAllRet(this.checked)"> เลือกทั้งหมด</label>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div class="ret-list">
+      ${list.map(r=>{
+        const d=r.status==='overdue'?` <span class="badge b-overdue" style="font-size:10px">เกิน ${daysDiff(r.dateDue)} วัน</span>`:'';
+        const en=r.eqName||getEq(r.eqId).name;const jn=r.jobName||getJob(r.jobId).name;
+        const unit=r.eqUnit||getEq(r.eqId).unit||'';
+        return`<div class="ret-row">
+          <input type="checkbox" id="rc-${r.id}" checked>
+          <div class="ret-info">
+            <div class="ret-name">${en}${d}</div>
+            <div class="ret-sub">${jn} · ${r.borrower} · ${r.location||'-'} · ${r.qty} ${unit}</div>
+          </div></div>`;
+      }).join('')}
+    </div></div>
+    <div class="fr"><label class="fl">วันที่คืน (ใช้กับทุกรายการที่เลือก)</label>
+      <input class="inp inp-full" type="date" id="bulk-datein" value="${today()}"></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveBulkRet()">ยืนยันคืน</button>
+    </div>`);
+}
+function toggleAllRet(c){
+  reqs.filter(r=>r.type==='borrow'&&(r.status==='out'||r.status==='overdue'))
+    .forEach(r=>{const el=document.getElementById('rc-'+r.id);if(el)el.checked=c;});
+}
+function saveBulkRet(){
+  const dateIn=document.getElementById('bulk-datein').value;let cnt=0;
+  reqs.filter(r=>r.type==='borrow'&&(r.status==='out'||r.status==='overdue')).forEach(r=>{
+    const el=document.getElementById('rc-'+r.id);
+    if(el&&el.checked){r.dateIn=dateIn;r.status='returned';cnt++;}
+  });
+  persist();closeModal();renderAll();renderReq();renderEq();
+  if(cnt){alert(`คืนสำเร็จ ${cnt} รายการ`);autoSync();}
+}
+function confirmBulkReturn(){
+  if(!selectedIds.size){alert('กรุณาเลือกรายการ');return;}
+  const list=reqs.filter(r=>selectedIds.has(r.id));
+  openModal(`<h3>ยืนยันคืน ${list.length} รายการ</h3>
+    <div class="card" style="margin-bottom:12px"><div class="ret-list">
+      ${list.map(r=>`<div class="ret-row"><div class="ret-info">
+        <div class="ret-name">${r.eqName||getEq(r.eqId).name}</div>
+        <div class="ret-sub">${r.jobName||getJob(r.jobId).name} · ${r.borrower}</div>
+      </div></div>`).join('')}
+    </div></div>
+    <div class="fr"><label class="fl">วันที่คืน</label><input class="inp inp-full" type="date" id="sel-datein" value="${today()}"></div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveSelRet()">ยืนยัน</button>
+    </div>`);
+}
+function saveSelRet(){
+  const dateIn=document.getElementById('sel-datein').value;
+  selectedIds.forEach(id=>{const r=reqs.find(x=>x.id==id);if(r){r.dateIn=dateIn;r.status='returned';}});
+  const cnt=selectedIds.size;selectedIds.clear();bulkMode=false;
+  persist();closeModal();renderAll();renderReq();renderEq();
+  alert(`คืนสำเร็จ ${cnt} รายการ`);autoSync();
+}
+
+// ===== EQUIPMENT CRUD =====
+function openAddEq(){
+  const catOpts=categories.sort((a,b)=>a.localeCompare(b,'th')).map(c=>`<option value="${c}">${c}</option>`).join('');
+  openModal(`<h3><i class="ti ti-tool"></i> เพิ่มอุปกรณ์</h3>
+    <div class="fr"><label class="fl">ชื่ออุปกรณ์ * <span style="font-size:10px;color:var(--text3)">(แนะนำ: ใส่รหัสนำหน้า เช่น S01, E01)</span></label>
+      <input class="inp inp-full" id="e-name" placeholder="เช่น S06 กล้อง Mirrorless"></div>
+    <div class="fr2">
+      <div><label class="fl">Category *</label>
+        <select class="inp inp-full" id="e-cat" onchange="toggleNewCat()">${catOpts}<option value="__new__">+ เพิ่ม Category ใหม่</option></select></div>
+      <div><label class="fl">ประเภท</label>
+        <select class="inp inp-full" id="e-type"><option value="borrow">เบิกยืม (ต้องคืน)</option><option value="consumable">สิ้นเปลือง</option></select></div>
+    </div>
+    <div id="new-cat-row" style="display:none" class="fr"><label class="fl">ชื่อ Category ใหม่</label>
+      <input class="inp inp-full" id="e-newcat" placeholder="ชื่อ Category"></div>
+    <div class="fr2">
+      <div><label class="fl">จำนวน *</label><input class="inp inp-full" type="number" id="e-total" value="1" min="1"></div>
+      <div><label class="fl">หน่วย</label><input class="inp inp-full" id="e-unit" placeholder="เช่น ตัว, เครื่อง, รีม"></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveEq()">บันทึก</button>
+    </div>`);
+}
+function toggleNewCat(){document.getElementById('new-cat-row').style.display=document.getElementById('e-cat').value==='__new__'?'block':'none';}
+function saveEq(){
+  const name=document.getElementById('e-name').value.trim();if(!name){alert('กรุณากรอกชื่ออุปกรณ์');return;}
+  let cat=document.getElementById('e-cat').value;
+  if(cat==='__new__'){cat=document.getElementById('e-newcat').value.trim();if(!cat){alert('กรุณากรอก Category');return;}if(!categories.includes(cat))categories.push(cat);}
+  equipment.push({id:nextEid++,name,cat,type:document.getElementById('e-type').value,total:parseInt(document.getElementById('e-total').value)||1,unit:document.getElementById('e-unit').value||'ชิ้น'});
+  persist();closeModal();populateCatFilter();renderEq();autoSync();
+}
+function delEq(id){
+  if(!confirm('ยืนยันลบอุปกรณ์นี้?')) return;
+  equipment=equipment.filter(e=>e.id!=id);persist();renderEq();renderAll();autoSync();
+}
+function showEqHist(id){
+  const eq=getEq(id);const hist=reqs.filter(r=>r.eqId==id);
+  openModal(`<h3><i class="ti ti-history"></i> ประวัติ: ${eq.name}</h3>
+    ${hist.length?`<div class="card"><table style="table-layout:fixed">
+      <colgroup><col style="width:28%"><col style="width:22%"><col style="width:22%"><col style="width:28%"></colgroup>
+      <thead><tr><th>งาน</th><th>ผู้เบิก</th><th>อยู่ที่</th><th>สถานะ</th></tr></thead>
+      <tbody>${hist.map(r=>`<tr><td>${r.jobName||getJob(r.jobId).name}</td><td>${r.borrower}</td><td style="font-size:12px;color:var(--text2)">${r.location||'-'}</td><td>${statusBadge(r)}</td></tr>`).join('')}</tbody>
+    </table></div>`:`<div class="empty"><i class="ti ti-history"></i>ยังไม่มีประวัติ</div>`}
+    <div class="mfooter"><button class="btn" onclick="closeModal()">ปิด</button></div>`);
+}
+
+// ===== MANAGE CATEGORIES =====
+function openManageCats(){
+  openModal(`<h3><i class="ti ti-tag"></i> จัดการ Category</h3>
+    <div id="cat-list" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <input class="inp" style="flex:1" id="new-cat-inp" placeholder="ชื่อ Category ใหม่">
+      <button class="btn btn-primary" onclick="addCat()"><i class="ti ti-plus"></i> เพิ่ม</button>
+    </div>
+    <div class="mfooter"><button class="btn" onclick="closeModal()">ปิด</button></div>`);
+  renderCatList();
+}
+function renderCatList(){
+  const el=document.getElementById('cat-list');if(!el) return;
+  const sorted=[...categories].sort((a,b)=>a.localeCompare(b,'th'));
+  el.innerHTML=sorted.map(c=>{
+    const cnt=equipment.filter(e=>e.cat===c).length;
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px">
+      <span style="font-size:13px">${c} <span style="font-size:11px;color:var(--text3)">(${cnt} อุปกรณ์)</span></span>
+      ${cnt===0?`<button class="ib" onclick="delCat('${c.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button>`
+        :`<span style="font-size:11px;color:var(--text3)">มีอุปกรณ์อยู่ ลบไม่ได้</span>`}
+    </div>`;
+  }).join('');
+}
+function addCat(){
+  const v=document.getElementById('new-cat-inp').value.trim();
+  if(!v){alert('กรุณากรอกชื่อ Category');return;}
+  if(categories.includes(v)){alert('มี Category นี้อยู่แล้ว');return;}
+  categories.push(v);persist();renderCatList();populateCatFilter();autoSync();
+  document.getElementById('new-cat-inp').value='';
+}
+function delCat(name){
+  if(!confirm(`ลบ Category "${name}"?`)) return;
+  categories=categories.filter(c=>c!==name);persist();renderCatList();populateCatFilter();autoSync();
+}
+
+// ===== JOBS CRUD =====
+function openAddJob(){
+  openModal(`<h3><i class="ti ti-briefcase"></i> เพิ่มงาน</h3>
+    <div class="fr"><label class="fl">ชื่องาน *</label><input class="inp inp-full" id="j-name" placeholder="ชื่องาน"></div>
+    <div class="fr"><label class="fl">รายละเอียด</label><input class="inp inp-full" id="j-detail" placeholder="รายละเอียด"></div>
+    <div class="fr2">
+      <div><label class="fl">วันที่</label><input class="inp inp-full" type="date" id="j-date" value="${today()}"></div>
+      <div><label class="fl">ผู้รับผิดชอบ</label><input class="inp inp-full" id="j-owner" placeholder="ชื่อ"></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveJob()">บันทึก</button>
+    </div>`);
+}
+function saveJob(){
+  const name=document.getElementById('j-name').value.trim();if(!name){alert('กรุณากรอกชื่องาน');return;}
+  jobs.push({id:nextJid++,name,detail:document.getElementById('j-detail').value,date:document.getElementById('j-date').value,owner:document.getElementById('j-owner').value});
+  persist();closeModal();renderJobs();renderAll();autoSync();
+}
+function delJob(id){
+  if(!confirm('ยืนยันลบงาน?')) return;
+  jobs=jobs.filter(j=>j.id!=id);reqs=reqs.filter(r=>r.jobId!=id);
+  persist();renderJobs();renderAll();autoSync();
+}
+function showJobDetail(id){
+  const j=getJob(id);const list=reqs.filter(r=>r.jobId==id||r.jobName===j.name);
+  openModal(`<h3><i class="ti ti-briefcase"></i> ${j.name}</h3>
+    <div class="detail-panel">
+      <div class="detail-row"><span class="dk">วันที่</span><span class="dv">${fd(j.date)}</span></div>
+      <div class="detail-row"><span class="dk">ผู้รับผิดชอบ</span><span class="dv">${j.owner||'-'}</span></div>
+      <div class="detail-row"><span class="dk">รายละเอียด</span><span class="dv">${j.detail||'-'}</span></div>
+    </div>
+    ${list.length?`<div class="card"><table style="table-layout:fixed">
+      <colgroup><col style="width:28%"><col style="width:18%"><col style="width:18%"><col style="width:10%"><col style="width:26%"></colgroup>
+      <thead><tr><th>อุปกรณ์</th><th>ผู้เบิก</th><th>อยู่ที่</th><th>จำนวน</th><th>สถานะ</th></tr></thead>
+      <tbody>${list.map(r=>`<tr><td style="white-space:normal">${r.eqName||getEq(r.eqId).name}</td><td>${r.borrower}</td><td style="font-size:12px;color:var(--text2)">${r.location||'-'}</td><td>${r.qty}</td><td>${statusBadge(r)}</td></tr>`).join('')}</tbody>
+    </table></div>`:`<div class="empty"><i class="ti ti-inbox"></i>ยังไม่มีรายการเบิก</div>`}
+    <div class="mfooter"><button class="btn" onclick="closeModal()">ปิด</button></div>`);
+}
+function delReq(id){
+  if(!confirm('ยืนยันลบรายการ?')) return;
+  reqs=reqs.filter(r=>r.id!=id);persist();renderReq();renderAll();autoSync();
+}
+
+// ===== EXPORT EXCEL =====
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  // Sheet 1: รายการเบิกทั้งหมด
+  const reqData=[['งาน','อุปกรณ์','ผู้เบิก','จำนวน','หน่วย','สถานที่','ประเภท','วันเบิก','กำหนดคืน','วันคืน','สถานะ']];
+  reqs.forEach(r=>{
+    const jn=r.jobName||getJob(r.jobId).name;
+    const en=r.eqName||getEq(r.eqId).name;
+    const unit=r.eqUnit||getEq(r.eqId).unit||'';
+    const statusMap={out:'กำลังยืม',returned:'คืนแล้ว',overdue:'เกินกำหนด',consumable:'สิ้นเปลือง'};
+    reqData.push([jn,en,r.borrower,r.qty,unit,r.location||'-',r.type==='borrow'?'เบิกยืม':'สิ้นเปลือง',r.dateOut||'-',r.dateDue||'-',r.dateIn||'-',statusMap[r.status]||r.status]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reqData),'รายการเบิกทั้งหมด');
+  // Sheet 2: สถานะอุปกรณ์
+  const eqData=[['ชื่ออุปกรณ์','Category','ประเภท','จำนวนทั้งหมด','คงเหลือ','กำลังยืม (อยู่ที่)']];
+  [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'th')).forEach(e=>{
+    eqData.push([e.name,e.cat,e.type==='borrow'?'เบิกยืม':'สิ้นเปลือง',e.total,calcAvail(e.id),getOutInfo(e.id)||'-']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eqData),'สถานะอุปกรณ์');
+  // Sheet 3: สรุปต่องาน
+  const jobData=[['ชื่องาน','วันที่','ผู้รับผิดชอบ','จำนวนรายการเบิก','ยืมอยู่','เกินกำหนด','คืนแล้ว','สิ้นเปลือง']];
+  jobs.forEach(j=>{
+    const jr=reqs.filter(r=>r.jobId==j.id||r.jobName===j.name);
+    jobData.push([j.name,j.date,j.owner||'-',jr.length,jr.filter(r=>r.status==='out').length,jr.filter(r=>r.status==='overdue').length,jr.filter(r=>r.status==='returned').length,jr.filter(r=>r.status==='consumable').length]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(jobData),'สรุปต่องาน');
+  const d=new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb,`equipment-report-${d}.xlsx`);
+}
+
+// ===== GOOGLE SHEETS SYNC =====
+function saveGsUrl(){
+  gsUrl=document.getElementById('gs-url').value.trim();
+  save('eq_gsurl',gsUrl);
+  setSyncStatus(gsUrl?'idle':'off');
+}
+function setSyncStatus(s){
+  const dot=document.getElementById('sync-dot');
+  const txt=document.getElementById('sync-status');
+  if(s==='ok'){dot.className='sync-dot ok';txt.textContent='Sheets: เชื่อมแล้ว';}
+  else if(s==='loading'){dot.className='sync-dot loading';txt.textContent='กำลังซิงค์...';}
+  else if(s==='err'){dot.className='sync-dot err';txt.textContent='Sheets: เชื่อมไม่ได้';}
+  else if(s==='idle'){dot.className='sync-dot';txt.textContent='Sheets: พร้อมซิงค์';}
+  else{dot.className='sync-dot';txt.textContent='ไม่ได้เชื่อม Sheets';}
+  const st=document.getElementById('sync-time');
+  if(s==='ok'&&st) st.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+}
+function showGsMsg(msg,type){
+  const el=document.getElementById('gs-msg');if(!el) return;
+  el.textContent=msg;
+  el.style.display='block';
+  el.style.color=type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--warn)';
+}
+async function pushData(){
+  if(!gsUrl){alert('กรุณากรอก Web App URL ก่อน');return;}
+  setSyncStatus('loading');
+  try{
+    // Use GET with payload param — avoids CORS preflight
+    const payload={categories:categories.map(c=>({name:c})),equipment,jobs,reqs};
+    const encoded=encodeURIComponent(JSON.stringify(payload));
+    // Split into chunks if too large (URL limit ~7000 chars)
+    const url=gsUrl+'?action=push&payload='+encoded;
+    if(url.length>7500){
+      // Push in parts: cats+eq first, then jobs+reqs
+      await pushPart({categories:categories.map(c=>({name:c})),equipment});
+      await pushPart({jobs,reqs});
+    } else {
+      const res=await fetch(url,{redirect:'follow'});
+      const d=await res.json();
+      if(!d.ok) throw new Error(d.error||'push failed');
+    }
+    setSyncStatus('ok');showGsMsg('อัปโหลดสำเร็จ ข้อมูลอยู่ใน Google Sheets แล้ว','success');
+  }catch(e){setSyncStatus('err');showGsMsg('เชื่อมต่อไม่ได้ — ดู Console (F12) หรือตรวจสอบ Deploy settings อีกครั้ง','error');console.error(e);}
+}
+async function pushPart(partial){
+  const encoded=encodeURIComponent(JSON.stringify(partial));
+  const url=gsUrl+'?action=push&payload='+encoded;
+  const res=await fetch(url,{redirect:'follow'});
+  const d=await res.json();
+  if(!d.ok) throw new Error(d.error||'push part failed');
+}
+async function pullData(){
+  if(!gsUrl){alert('กรุณากรอก Web App URL ก่อน');return;}
+  setSyncStatus('loading');
+  try{
+    const res=await fetch(gsUrl+'?action=get',{redirect:'follow'});
+    const d=await res.json();
+    if(d.ok&&d.data){
+      if(d.data.categories&&d.data.categories.length) categories=d.data.categories.map(r=>r.name||String(r));
+      if(d.data.equipment&&d.data.equipment.length) equipment=d.data.equipment.map(r=>({...r,id:+r.id,total:+r.total}));
+      if(d.data.jobs&&d.data.jobs.length) jobs=d.data.jobs.map(r=>({...r,id:+r.id}));
+      if(d.data.reqs&&d.data.reqs.length) reqs=d.data.reqs.map(r=>({...r,id:+r.id,jobId:+r.jobId,eqId:+r.eqId,qty:+r.qty}));
+      persist();renderAll();populateCatFilter();renderEq();renderJobs();renderReq();
+      setSyncStatus('ok');showGsMsg('ดึงข้อมูลสำเร็จ','success');
+    }else throw new Error('no data');
+  }catch(e){setSyncStatus('err');showGsMsg('ดึงข้อมูลไม่ได้ — ตรวจสอบ URL และ Deploy settings','error');console.error(e);}
+}
+async function syncNow(){
+  if(!gsUrl){goTab('settings');return;}
+  await pushData();
+}
+async function autoSync(){if(gsUrl) await pushData().catch(()=>{});}
+
+// ===== INIT =====
+if(gsUrl){document.getElementById('gs-url')&&(document.getElementById('gs-url').value=gsUrl);setSyncStatus('idle');}
+renderAll();populateCatFilter();
+</script>
+</body>
+</html>
